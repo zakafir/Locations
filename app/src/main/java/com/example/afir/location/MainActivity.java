@@ -23,19 +23,24 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private TextView latitudeLocationTxt,longitudeLocationTxt;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
+    private Location mLastLocation;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        latitudeLocationTxt = (TextView) findViewById(R.id.latitudeLocationTxt);
+        longitudeLocationTxt = (TextView) findViewById(R.id.longitudeLocationTxt);
+        buildGoogleApiClient();
+    }
+
+    private void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
-        latitudeLocationTxt = (TextView) findViewById(R.id.latitudeLocationTxt);
-        longitudeLocationTxt = (TextView) findViewById(R.id.longitudeLocationTxt);
     }
 
     @Override
@@ -49,24 +54,31 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onStop() {
         super.onStop();
         //Here we disconnect the Google API client to the services
-        mGoogleApiClient.disconnect();
+        if(mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
     }
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        mLocationRequest = LocationRequest.create();
+        int permissionCheck = ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION);
+        /*mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         //to update the location every second
-        mLocationRequest.setInterval(1000);
+        mLocationRequest.setInterval(1000);*/
 
-        int permissionCheck = ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION);
-        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-            Log.d(LOG_TAG,"Permission for location is OK");
+
+        if(permissionCheck == PackageManager.PERMISSION_GRANTED){
+            mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            if(mLastLocation != null) {
+                latitudeLocationTxt.setText(String.valueOf(mLastLocation.getLatitude()));
+                longitudeLocationTxt.setText(String.valueOf(mLastLocation.getLongitude()));
+            }
+
         }
-        else{
-            Log.d(LOG_TAG,"Permission for location is NG");
-        }
+
+            //LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+
     }
 
     @Override
@@ -76,8 +88,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.d(LOG_TAG,"GoogleApiClient connection has been failed");
+        Log.d(LOG_TAG,"GoogleApiClient connection has been failed: "+connectionResult.getErrorCode());
     }
+
 
     @Override
     public void onLocationChanged(Location location) {
